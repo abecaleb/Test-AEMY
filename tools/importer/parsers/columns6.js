@@ -1,41 +1,36 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Columns (columns6) block: No field comments required in cells
-  // Get the two columns: left (image), right (text)
-  // Defensive: find the .row, then its immediate children (columns)
+  // Columns block: no field comments required in cells
+  // Get the immediate row children (the columns)
   const row = element.querySelector('.row');
   if (!row) return;
-  const columns = Array.from(row.children); // Should be two: .col-xs-12.col-sm-4, .col-xs-12.col-sm-8
 
-  // Left column: image
+  // Get the two columns (image and text)
+  const cols = row.querySelectorAll(':scope > div');
+  if (cols.length < 2) return;
+
+  // Left column: find image (may be wrapped)
   let leftContent = null;
-  const leftCol = columns[0];
-  if (leftCol) {
-    // Find the image-wrapper or image
-    const imgWrapper = leftCol.querySelector('.image-wrapper, img');
-    leftContent = imgWrapper ? imgWrapper : leftCol;
+  const leftImgWrap = cols[0].querySelector('.image-wrapper, .image-component, img');
+  if (leftImgWrap) {
+    // If it's an image wrapper, get the image inside
+    const img = leftImgWrap.querySelector('img') || leftImgWrap;
+    leftContent = img;
   }
 
-  // Right column: text
+  // Right column: find bodycopy/text
   let rightContent = null;
-  const rightCol = columns[1];
-  if (rightCol) {
-    // Find the bodycopy or just use the column
-    const bodycopy = rightCol.querySelector('.bodycopy') || rightCol;
-    rightContent = bodycopy;
+  const bodyCopy = cols[1].querySelector('.bodycopy') || cols[1];
+  if (bodyCopy) {
+    rightContent = bodyCopy;
   }
 
-  // Build the table structure
+  // Table header row
   const headerRow = ['Columns (columns6)'];
-  const contentRow = [
-    leftContent,
-    rightContent,
-  ];
+  // Content row: image left, text right
+  const contentRow = [leftContent, rightContent];
 
-  const table = WebImporter.DOMUtils.createTable([
-    headerRow,
-    contentRow,
-  ], document);
-
-  element.replaceWith(table);
+  const cells = [headerRow, contentRow];
+  const block = WebImporter.DOMUtils.createTable(cells, document);
+  element.replaceWith(block);
 }

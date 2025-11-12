@@ -1,80 +1,59 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Helper to wrap content with field comment
-  function withFieldComment(field, content) {
+  // Helper to add field comment before content
+  function fieldCell(fieldName, content) {
     const frag = document.createDocumentFragment();
-    frag.appendChild(document.createComment(` field:${field} `));
-    frag.appendChild(content);
+    frag.appendChild(document.createComment(` field:${fieldName} `));
+    if (content) frag.appendChild(content);
     return frag;
   }
 
-  // Table header row
-  const headerRow = ['Cards (cards4)'];
-  const rows = [headerRow];
+  const cards = [];
 
-  // --- SIDEBAR (as a card row) ---
-  const sidebar = element.querySelector('.col-lg-3');
-  if (sidebar) {
-    const sidebarFrag = document.createDocumentFragment();
-    const heading = sidebar.querySelector('.solution-heading');
-    if (heading) sidebarFrag.appendChild(heading.cloneNode(true));
-    const list = sidebar.querySelector('ul');
-    if (list) sidebarFrag.appendChild(list.cloneNode(true));
-    rows.push([
-      '',
-      withFieldComment('text', sidebarFrag)
+  // Extract left navigation menu as a card
+  const navCol = element.querySelector('.col-lg-3');
+  if (navCol) {
+    const heading = navCol.querySelector('.solution-heading');
+    const list = navCol.querySelector('.tiles-list');
+    const navFrag = document.createDocumentFragment();
+    if (heading) navFrag.appendChild(heading.cloneNode(true));
+    if (list) navFrag.appendChild(list.cloneNode(true));
+    cards.push([
+      fieldCell('image', null),
+      fieldCell('text', navFrag)
     ]);
   }
 
-  // --- CARDS ---
-  const cardsContainer = element.querySelector('.tiles-canvas');
-  if (cardsContainer) {
-    const cardEls = Array.from(cardsContainer.querySelectorAll('.tiles-tile'));
-    cardEls.forEach(cardEl => {
-      // IMAGE/ICON CELL
-      let imageCell = '';
-      const img = cardEl.querySelector('img');
-      if (img) {
-        imageCell = withFieldComment('image', img.cloneNode(true));
-      } else {
-        // Try to get the icon span or svg
-        const icon = cardEl.querySelector('span.icon, svg');
-        if (icon) {
-          imageCell = withFieldComment('image', icon.cloneNode(true));
-        }
-      }
-      // TEXT CELL
-      const textFrag = document.createDocumentFragment();
-      // Get all text content (not just h3/p)
-      // Clone the .tiles-tile-text or .tiles-tile-textonly container
-      const textContainer = cardEl.querySelector('.tiles-tile-text, .tiles-tile-textonly');
-      if (textContainer) {
-        textFrag.appendChild(textContainer.cloneNode(true));
-      } else {
-        // fallback: append all h3 and p
-        cardEl.querySelectorAll('h3, p').forEach(el => {
-          textFrag.appendChild(el.cloneNode(true));
-        });
-      }
-      rows.push([
-        imageCell,
-        withFieldComment('text', textFrag)
+  // The main card grid is inside .tiles-canvas2
+  const grid = element.querySelector('.tiles-canvas2');
+  if (grid) {
+    // All card anchors (each card is a clickable <a>)
+    const cardAnchors = grid.querySelectorAll('.tiles-anchor');
+    cardAnchors.forEach((anchor) => {
+      // Find image (if present)
+      const img = anchor.querySelector('img');
+      cards.push([
+        fieldCell('image', img),
+        fieldCell('text', anchor.cloneNode(true))
       ]);
     });
+    // Add the call-to-action link as a card (last row)
+    const ctaLink = grid.querySelector('a[href]:not(.tiles-anchor) .tiles-link');
+    if (ctaLink) {
+      const ctaAnchor = ctaLink.closest('a');
+      cards.push([
+        fieldCell('image', null),
+        fieldCell('text', ctaAnchor ? ctaAnchor.cloneNode(true) : ctaLink.cloneNode(true))
+      ]);
+    }
   }
 
-  // --- CTA LINK (below cards, must include all text content) ---
-  const ctaLink = element.querySelector('.tiles-canvas + a');
-  if (ctaLink && ctaLink.textContent.trim()) {
-    const frag = document.createDocumentFragment();
-    frag.appendChild(ctaLink.cloneNode(true));
-    rows.push([
-      '',
-      withFieldComment('text', frag)
-    ]);
-  }
-
-  // Create the table
+  // Table header
+  const headerRow = ['Cards (cards4)'];
+  // Compose table rows
+  const rows = [headerRow, ...cards];
+  // Create table
   const table = WebImporter.DOMUtils.createTable(rows, document);
+  // Replace element
   element.replaceWith(table);
 }

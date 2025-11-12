@@ -1,47 +1,44 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Header row for the Columns block
+  // Always use the block name as the header row
   const headerRow = ['Columns (columns8)'];
 
-  // Find the logo (Westpac) and social icons container
-  const logoDiv = element.querySelector('.footer-logo');
-  const iconsDiv = element.querySelector('.footer-icons');
+  // Find the logo container (should be first column)
+  const logoEl = element.querySelector('.footer-logo');
+  // Find the icons container
+  const iconsEl = element.querySelector('.footer-icons');
 
-  // Get all social icon links (each with an <img>)
-  let iconLinks = [];
-  if (iconsDiv) {
-    iconLinks = Array.from(iconsDiv.querySelectorAll('a'));
+  // Gather all columns in correct visual order: logo first, then icons
+  let columns = [];
+  if (logoEl) {
+    // If the logo container has an SVG or IMG, use that; otherwise, use its content
+    const svgOrImg = logoEl.querySelector('svg, img');
+    if (svgOrImg) {
+      columns.push(svgOrImg.cloneNode(true));
+    } else {
+      // If just a span, clone it
+      const span = logoEl.querySelector('span');
+      if (span) {
+        columns.push(span.cloneNode(true));
+      } else {
+        columns.push(logoEl.cloneNode(true));
+      }
+    }
+  }
+  if (iconsEl) {
+    const iconLinks = Array.from(iconsEl.querySelectorAll('a'));
+    columns = columns.concat(iconLinks.map(a => a.cloneNode(true)));
   }
 
-  // Get the logo element (Westpac)
-  let logoElem = null;
-  if (logoDiv) {
-    logoElem = logoDiv.querySelector('.icon-logo-footer');
-  }
+  // Only create the row if we have columns
+  const rows = columns.length > 0 ? [columns] : [];
 
-  // Build columns: one for each social icon (as <a> with aria-label and href), plus one for logo
-  const columns = [];
-  // Social icons first
-  iconLinks.forEach(link => {
-    // Clone the link to preserve attributes and image
-    const a = link.cloneNode(true);
-    columns.push(a);
-  });
-  // Logo column
-  if (logoElem) {
-    // Clone the span to preserve its text
-    columns.push(logoElem.cloneNode(true));
-  }
-
-  // Table rows: header + one row with all columns
-  const cells = [
+  // Build the table: header row, then icons row
+  const table = WebImporter.DOMUtils.createTable([
     headerRow,
-    columns
-  ];
-
-  // Create the block table
-  const block = WebImporter.DOMUtils.createTable(cells, document);
+    ...rows
+  ], document);
 
   // Replace the original element
-  element.replaceWith(block);
+  element.replaceWith(table);
 }

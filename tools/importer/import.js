@@ -13,11 +13,11 @@
 /* eslint-disable no-console */
 import hero2Parser from './parsers/hero2.js';
 import tableBordered5Parser from './parsers/tableBordered5.js';
+import cards4Parser from './parsers/cards4.js';
+import cards3Parser from './parsers/cards3.js';
 import columns6Parser from './parsers/columns6.js';
 import columns7Parser from './parsers/columns7.js';
 import columns8Parser from './parsers/columns8.js';
-import cards4Parser from './parsers/cards4.js';
-import cards3Parser from './parsers/cards3.js';
 import headerParser from './parsers/header.js';
 import metadataParser from './parsers/metadata.js';
 import cleanupTransformer from './transformers/cleanup.js';
@@ -36,11 +36,11 @@ const parsers = {
   metadata: metadataParser,
   hero2: hero2Parser,
   tableBordered5: tableBordered5Parser,
+  cards4: cards4Parser,
+  cards3: cards3Parser,
   columns6: columns6Parser,
   columns7: columns7Parser,
   columns8: columns8Parser,
-  cards4: cards4Parser,
-  cards3: cards3Parser,
   ...customParsers,
 };
 
