@@ -1,80 +1,76 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Helper to wrap content with field comment
-  function withFieldComment(field, content) {
+  // Helper to create a cell with a field comment and content
+  function fieldCell(fieldName, content) {
     const frag = document.createDocumentFragment();
-    frag.appendChild(document.createComment(` field:${field} `));
-    frag.appendChild(content);
+    frag.appendChild(document.createComment(` field:${fieldName} `));
+    if (Array.isArray(content)) {
+      content.forEach((el) => frag.appendChild(el));
+    } else {
+      frag.appendChild(content);
+    }
     return frag;
   }
 
-  // Table header row
-  const headerRow = ['Cards (cards4)'];
-  const rows = [headerRow];
+  const rows = [];
+  // Header row
+  rows.push(['Cards (cards4)']);
 
-  // --- SIDEBAR (as a card row) ---
+  // --- Extract sidebar navigation as a card row ---
   const sidebar = element.querySelector('.col-lg-3');
   if (sidebar) {
-    const sidebarFrag = document.createDocumentFragment();
+    let imageContent = null;
+    const frag = document.createDocumentFragment();
     const heading = sidebar.querySelector('.solution-heading');
-    if (heading) sidebarFrag.appendChild(heading.cloneNode(true));
-    const list = sidebar.querySelector('ul');
-    if (list) sidebarFrag.appendChild(list.cloneNode(true));
+    if (heading) {
+      frag.appendChild(heading.cloneNode(true));
+    }
+    const list = sidebar.querySelector('.tiles-list');
+    if (list) {
+      frag.appendChild(list.cloneNode(true));
+    }
     rows.push([
-      '',
-      withFieldComment('text', sidebarFrag)
+      imageContent,
+      fieldCell('text', frag)
     ]);
   }
 
-  // --- CARDS ---
-  const cardsContainer = element.querySelector('.tiles-canvas');
-  if (cardsContainer) {
-    const cardEls = Array.from(cardsContainer.querySelectorAll('.tiles-tile'));
-    cardEls.forEach(cardEl => {
-      // IMAGE/ICON CELL
-      let imageCell = '';
-      const img = cardEl.querySelector('img');
+  // --- Extract main card grid ---
+  const tilesCanvas = element.querySelector('.tiles-canvas');
+  if (tilesCanvas) {
+    const cardEls = tilesCanvas.querySelectorAll('.tiles-tile');
+    cardEls.forEach((cardEl) => {
+      let imageContent = null;
+      let textContent = null;
+      // Image/Icon cell
+      const img = cardEl.querySelector('.tiles-tile-img');
       if (img) {
-        imageCell = withFieldComment('image', img.cloneNode(true));
+        const imgWrapper = img.closest('.tiles-tile-image-wrapper') || img;
+        imageContent = fieldCell('image', imgWrapper.cloneNode(true));
       } else {
-        // Try to get the icon span or svg
-        const icon = cardEl.querySelector('span.icon, svg');
-        if (icon) {
-          imageCell = withFieldComment('image', icon.cloneNode(true));
+        const iconImg = cardEl.querySelector('.tile-icon img');
+        if (iconImg) {
+          imageContent = fieldCell('image', iconImg.cloneNode(true));
         }
       }
-      // TEXT CELL
-      const textFrag = document.createDocumentFragment();
-      // Get all text content (not just h3/p)
-      // Clone the .tiles-tile-text or .tiles-tile-textonly container
-      const textContainer = cardEl.querySelector('.tiles-tile-text, .tiles-tile-textonly');
-      if (textContainer) {
-        textFrag.appendChild(textContainer.cloneNode(true));
-      } else {
-        // fallback: append all h3 and p
-        cardEl.querySelectorAll('h3, p').forEach(el => {
-          textFrag.appendChild(el.cloneNode(true));
-        });
+      // Text cell
+      const tileText = cardEl.querySelector('.tiles-tile-text');
+      if (tileText) {
+        textContent = fieldCell('text', tileText.cloneNode(true));
       }
-      rows.push([
-        imageCell,
-        withFieldComment('text', textFrag)
-      ]);
+      rows.push([imageContent, textContent]);
     });
   }
 
-  // --- CTA LINK (below cards, must include all text content) ---
-  const ctaLink = element.querySelector('.tiles-canvas + a');
-  if (ctaLink && ctaLink.textContent.trim()) {
-    const frag = document.createDocumentFragment();
-    frag.appendChild(ctaLink.cloneNode(true));
-    rows.push([
-      '',
-      withFieldComment('text', frag)
-    ]);
+  // --- Extract bottom CTA link as a card row ---
+  const moreHelpLink = element.querySelector('.tiles-link');
+  if (moreHelpLink) {
+    let imageContent = null;
+    let textContent = fieldCell('text', moreHelpLink.cloneNode(true));
+    rows.push([imageContent, textContent]);
   }
 
-  // Create the table
-  const table = WebImporter.DOMUtils.createTable(rows, document);
-  element.replaceWith(table);
+  // Replace the original element with the block table
+  const block = WebImporter.DOMUtils.createTable(rows, document);
+  element.replaceWith(block);
 }

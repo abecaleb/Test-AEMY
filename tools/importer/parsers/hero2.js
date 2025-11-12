@@ -1,67 +1,69 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Helper to create a fragment with a field comment and content
-  function fieldFragment(fieldName, content) {
+  // Helper to add field comment before content
+  function fieldCell(field, content) {
     const frag = document.createDocumentFragment();
-    frag.appendChild(document.createComment(` field:${fieldName} `));
+    frag.appendChild(document.createComment(` field:${field} `));
     frag.appendChild(content);
     return frag;
   }
 
-  // --- HEADER ROW ---
+  // Header row
   const headerRow = ['Hero (hero2)'];
 
-  // --- IMAGE ROW ---
-  // Find the first <img> in the carousel slide
-  let imageCell = '';
+  // --- Extract image (model field: image) ---
+  // Find the first <img> inside the hero block
   const img = element.querySelector('img');
+  let imageCell = '';
   if (img) {
-    // Wrap image in <picture> for best practice
+    // Ensure alt attribute is present (model field: imageAlt)
+    if (!img.hasAttribute('alt')) {
+      img.setAttribute('alt', '');
+    }
+    // Wrap in <picture> for best practice
     const picture = document.createElement('picture');
     picture.appendChild(img);
-    imageCell = fieldFragment('image', picture);
+    imageCell = fieldCell('image', picture);
   }
 
-  // --- TEXT ROW ---
-  // Find the main heading, subheading, and CTA button
+  // --- Extract text (model field: text) ---
+  // Find headline, subheading, and CTA
+  // Headline: strong.slide-text-classic
+  // Subheading: p.slide-text-body-fineprint
+  // CTA: .slide-text-footer-button (a)
+  const textWrapper = element.querySelector('.slide-text-wrapper');
   let textCell = '';
-  const slideText = element.querySelector('.slide-text');
-  if (slideText) {
-    // Find headline (strong inside .slide-text-header)
-    const header = slideText.querySelector('.slide-text-header strong');
-    let headingEl = null;
-    if (header) {
-      headingEl = document.createElement('h1');
-      headingEl.textContent = header.textContent.trim();
+  if (textWrapper) {
+    // Compose richtext fragment
+    const frag = document.createDocumentFragment();
+    // Headline
+    const headline = textWrapper.querySelector('.slide-text-header strong');
+    if (headline) {
+      const h1 = document.createElement('h1');
+      h1.textContent = headline.textContent;
+      frag.appendChild(h1);
     }
-    // Find subheading/fine print (p inside .slide-text-body)
-    const finePrint = slideText.querySelector('.slide-text-body-fineprint');
-    let finePrintEl = null;
-    if (finePrint) {
-      finePrintEl = document.createElement('p');
-      finePrintEl.textContent = finePrint.textContent.trim();
+    // Subheading
+    const subheading = textWrapper.querySelector('.slide-text-body-fineprint');
+    if (subheading) {
+      frag.appendChild(subheading);
     }
-    // Find CTA button (a inside .slide-text-footer)
-    const cta = slideText.querySelector('.slide-text-footer a');
-    let ctaEl = null;
+    // CTA
+    const cta = element.querySelector('.slide-text-footer-button');
     if (cta) {
-      // Use the anchor as-is
-      ctaEl = cta;
+      frag.appendChild(cta);
     }
-    // Compose all text elements into a fragment
-    const textFrag = document.createDocumentFragment();
-    if (headingEl) textFrag.appendChild(headingEl);
-    if (finePrintEl) textFrag.appendChild(finePrintEl);
-    if (ctaEl) textFrag.appendChild(ctaEl);
-    textCell = fieldFragment('text', textFrag);
+    textCell = fieldCell('text', frag);
   }
 
-  // --- TABLE CREATION ---
-  const cells = [
+  // Build table rows
+  const rows = [
     headerRow,
     [imageCell],
-    [textCell],
+    [textCell]
   ];
-  const block = WebImporter.DOMUtils.createTable(cells, document);
-  element.replaceWith(block);
+
+  // Create table and replace element
+  const table = WebImporter.DOMUtils.createTable(rows, document);
+  element.replaceWith(table);
 }
